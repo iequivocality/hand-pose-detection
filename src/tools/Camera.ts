@@ -22,8 +22,15 @@ const connections = [
   [0, 17], [17, 18],[18, 19], [19,20]
 ];
 
+type ScatterGLContext = {
+  scatterGLEl: HTMLElement;
+  scatterGL: ScatterGL;
+  scatterGLHasInitialized: boolean;
+}
+
 function createScatterGLContext(selectors: string) {
   const scatterGLEl = document.querySelector(selectors) as HTMLElement;
+  console.log("createScatterGLContext", scatterGLEl)
   return {
     scatterGLEl,
     scatterGL: new ScatterGL(scatterGLEl, {
@@ -35,9 +42,6 @@ function createScatterGLContext(selectors: string) {
   };
 }
 
-const scatterGLCtxtLeftHand = createScatterGLContext('#scatter-gl-container-left');
-const scatterGLCtxtRightHand = createScatterGLContext('#scatter-gl-container-right');
-
 type CameraParam = {
   targetFPS: number,
   sizeOption: keyof typeof VIDEO_SIZE,
@@ -47,11 +51,15 @@ export class Camera {
   video: HTMLVideoElement;
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
+  scatterGLCtxtLeftHand: ScatterGLContext;
+  scatterGLCtxtRightHand: ScatterGLContext;
 
   constructor() {
     this.video = document.getElementById('video') as HTMLVideoElement;
     this.canvas = document.getElementById('output') as HTMLCanvasElement;
     this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
+    this.scatterGLCtxtLeftHand = createScatterGLContext('#scatter-gl-container-left');
+    this.scatterGLCtxtRightHand = createScatterGLContext('#scatter-gl-container-right');
   }
 
   static async setupCamera(cameraParam: CameraParam) {
@@ -105,7 +113,8 @@ export class Camera {
     camera.ctx.translate(camera.video.videoWidth, 0);
     camera.ctx.scale(-1, 1);
 
-    for (const ctxt of [scatterGLCtxtLeftHand, scatterGLCtxtRightHand]) {
+    console.log([this.scatterGLCtxtLeftHand, this.scatterGLCtxtRightHand] )
+    for (const ctxt of [camera.scatterGLCtxtLeftHand, camera.scatterGLCtxtRightHand]) {
       ctxt.scatterGLEl.style =
           `width: ${videoWidth / 2}px; height: ${videoHeight / 2}px;`;
       ctxt.scatterGL.resize();
@@ -144,7 +153,7 @@ export class Camera {
     for (let i = 0; i < hands.length; ++i) {
       // Third hand and onwards scatterGL context is set to null since we
       // don't render them.
-      const ctxt = [scatterGLCtxtLeftHand, scatterGLCtxtRightHand][i];
+      const ctxt = [this.scatterGLCtxtLeftHand, this.scatterGLCtxtRightHand][i];
       this.drawResult(hands[i], ctxt);
     }
   }
@@ -162,7 +171,7 @@ export class Camera {
     if (ctxt == null) {
       return;
     }
-    if (hand.keypoints3D != null && params.STATE.modelConfig.render3D) {
+    if (hand.keypoints3D != null && STATE.modelConfig.render3D) {
       this.drawKeypoints3D(hand.keypoints3D, hand.handedness, ctxt);
     } else {
       // Clear scatter plot.
@@ -216,12 +225,12 @@ export class Camera {
   }
 
   drawKeypoints3D(keypoints, handedness, ctxt) {
-    const scoreThreshold = params.STATE.modelConfig.scoreThreshold || 0;
+    const scoreThreshold = STATE.modelConfig.scoreThreshold || 0;
     const pointsData =
         keypoints.map(keypoint => ([-keypoint.x, -keypoint.y, -keypoint.z]));
 
     const dataset =
-        new scatter.ScatterGL.Dataset([...pointsData, ...ANCHOR_POINTS]);
+        new ScatterGL.Dataset([...pointsData, ...ANCHOR_POINTS]);
 
     ctxt.scatterGL.setPointColorer((i) => {
       if (keypoints[i] == null || keypoints[i].score < scoreThreshold) {

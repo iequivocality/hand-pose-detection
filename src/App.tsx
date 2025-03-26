@@ -176,6 +176,9 @@ function App() {
   });
 
 
+  console.log("ASDASDASD")
+
+
   return (
     <>
       <h1>Hand Pose Detection</h1>
